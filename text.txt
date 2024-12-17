@@ -1,0 +1,42 @@
+export const updateProfile = async (req, res) => {
+    try {
+        const { profilePic } = req.body; // Profile pic expected as a base64 string or URL
+        const userId = req.user._id; // User's ID from authentication middleware
+
+        if (!profilePic) {
+            return res.status(400).json({
+                message: "Profile picture is required!",
+            });
+        }
+
+        // Upload to Cloudinary
+        const uploadedResponse = await cloudinary.uploader.upload(profilePic, {
+            folder: "profile_pics", // Optional folder organization in Cloudinary
+            resource_type: "image", // Specify the resource type
+        });
+
+        // Update the user's profile picture URL in the database
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { profilePic: uploadedResponse.secure_url },
+            { new: true } // Returns the updated document
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                message: "User not found!",
+            });
+        }
+
+        res.status(200).json({
+            message: "Profile picture updated successfully!",
+            profilePic: updatedUser.profilePic, // Return updated profile pic URL
+        });
+    } catch (error) {
+        console.error("Error in updating profile:", error.message);
+        res.status(500).json({
+            message: "Internal Server Error!",
+            error: error.message,
+        });
+    }
+};
